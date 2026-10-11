@@ -21,8 +21,27 @@ class Client:
         except requests.RequestException:
             raise FeedError('Verbindung fehlgeschlagen oder Zeitüberschreitung. Erneut versuchen.') from None
         errors = {401:'Schlüsselpaar ungültig oder abgelaufen.',403:'Zugriff abgelehnt. Marktdaten-Berechtigung und API-Freigabe prüfen.',429:'Abruflimit erreicht. Mindestens 60 Sekunden warten.',404:'API-Endpunkt oder Instrument nicht gefunden.'}
-        if r.status_code != 200:
-            raise FeedError(f'HTTP {r.status_code}: '+errors.get(r.status_code,'eToro-Abruf fehlgeschlagen.'))
+                if r.status_code != 200:
+            message = errors.get(
+                r.status_code,
+                'Anfrage abgelehnt.' if r.status_code == 422
+                else 'eToro-Abruf fehlgeschlagen.'
+            )
+
+            # Fehlerantwort auslesen; Schlüssel vor der Ausgabe maskieren.
+            detail = r.text or ''
+            for key in sorted(self.keys.values(), key=len, reverse=True):
+                if key:
+                    detail = detail.replace(key, '[SCHLÜSSEL ENTFERNT]')
+
+            # Steuerzeichen und überlange Antworten begrenzen.
+            detail = ' '.join(detail.split())[:1500]
+
+            raise FeedError(
+                f'HTTP {r.status_code}: {message}\n'
+                f'Endpunkt: {path}\n'
+                f'eToro-Details: {detail or "Keine Fehlerdetails erhalten."}'
+            )
         try:
             return r.json()
         except ValueError:
