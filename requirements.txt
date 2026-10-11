@@ -11,3 +11,4 @@ curl_cffi
 lxml
 html5lib
 beautifulsoup4
+plotly
